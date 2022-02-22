@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: "message-box"
+  data:
+    cassandra:
+      keyspace-name: message_box
+      contact-points: 127.0.0.1
+      port: 9142
+      local-datacenter: datacenter1
+  kafka:
+    bootstrap-servers: localhost:9092
+    properties:
+      spring:
+        json:
+          trusted:
+            packages: "*"
+
