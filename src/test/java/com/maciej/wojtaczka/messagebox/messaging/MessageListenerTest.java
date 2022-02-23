@@ -11,6 +11,7 @@ import com.maciej.wojtaczka.messagebox.utils.KafkaTestListener;
 import org.cassandraunit.CQLDataLoader;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,13 +55,18 @@ class MessageListenerTest {
 		new CQLDataLoader(session).load(new ClassPathCQLDataSet("schema.cql"));
 	}
 
+	@AfterEach
+	void cleanup() {
+		EmbeddedCassandraServerHelper.cleanDataEmbeddedCassandra("message_box");
+	}
+
 	@Test
 	void shouldSaveAndForwardInboundMessage() throws JsonProcessingException, ExecutionException, InterruptedException {
 
 		kafkaTestListener.listenToTopic(KafkaPostMan.MESSAGE_ACCEPTED_TOPIC, 1);
 
 		//given conversation exists
-		String conversationId = UUID.randomUUID().toString();
+		UUID conversationId = UUID.randomUUID();
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID msgReceiver = UUID.randomUUID();
 
@@ -93,6 +99,8 @@ class MessageListenerTest {
 		assertThat(message.getTime()).isNotNull();
 
 		//verify message storage
+		Thread.sleep(100);
+
 		StepVerifier.create(storage.fetchConversationMessages(conversationId))
 					.assertNext(msg -> assertAll(() -> assertThat(msg.getAuthorId()).isEqualTo(msgAuthorId),
 												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),

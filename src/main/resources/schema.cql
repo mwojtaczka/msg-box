@@ -2,9 +2,16 @@ CREATE KEYSPACE IF NOT EXISTS message_box WITH REPLICATION = { 'class' : 'Simple
 
 CREATE TABLE IF NOT EXISTS message_box.conversation
 (
-    conversation_id  text,
+    conversation_id  uuid,
     interlocutors set<uuid>,
     PRIMARY KEY (conversation_id)
+);
+
+CREATE TABLE IF NOT EXISTS message_box.conversation_by_user
+(
+    user_id uuid,
+    conversation_id  uuid,
+    PRIMARY KEY ((user_id), conversation_id)
 );
 
 CREATE TABLE IF NOT EXISTS message_box.message
@@ -12,7 +19,7 @@ CREATE TABLE IF NOT EXISTS message_box.message
     author_id  uuid,
     time timestamp,
     content text,
-    conversation_id text,
+    conversation_id uuid,
     PRIMARY KEY ((conversation_id), author_id, time)
 );
 

@@ -1,10 +1,11 @@
 package com.maciej.wojtaczka.messagebox.messaging;
 
+import com.maciej.wojtaczka.messagebox.domain.ConversationService;
 import com.maciej.wojtaczka.messagebox.domain.ConversationStorage;
-import com.maciej.wojtaczka.messagebox.domain.MessageService;
 import com.maciej.wojtaczka.messagebox.domain.PostMan;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
+import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,29 +19,38 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.sender.SenderOptions;
 
-import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
 public class MessagingConfiguration {
 
 	public static final String MESSAGE_RECEIVED_TOPIC = "message-received";
+	public static final String CONNECTION_CREATED_TOPIC = "connection-created";
 
 	@Value("${spring.application.name}")
 	private String applicationName;
 
 	@Bean
-	ReceiverOptions<String, Message> kafkaReceiverOptions(KafkaProperties kafkaProperties) {
+	ReactiveKafkaConsumerTemplate<String, Message> reactiveMessageConsumerTemplate(KafkaProperties kafkaProperties) {
 		ReceiverOptions<String, Message> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
-		return basicReceiverOptions.subscription(Collections.singletonList(MESSAGE_RECEIVED_TOPIC))
-								   .consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
-								   .consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		ReceiverOptions<String, Message> messageReceiverOptions =
+				basicReceiverOptions.subscription(Set.of(MESSAGE_RECEIVED_TOPIC))
+									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
+									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+
+		return new ReactiveKafkaConsumerTemplate<>(messageReceiverOptions);
 	}
 
 	@Bean
-	ReactiveKafkaConsumerTemplate<String, Message> reactiveKafkaConsumerTemplate(
-			ReceiverOptions<String, Message> kafkaReceiverOptions) {
-		return new ReactiveKafkaConsumerTemplate<>(kafkaReceiverOptions);
+	ReactiveKafkaConsumerTemplate<String, UserConnection> reactiveConnectionConsumerTemplate(KafkaProperties kafkaProperties) {
+		ReceiverOptions<String, UserConnection> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
+		ReceiverOptions<String, UserConnection> messageReceiverOptions =
+				basicReceiverOptions.subscription(Set.of(CONNECTION_CREATED_TOPIC))
+									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
+									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+
+		return new ReactiveKafkaConsumerTemplate<>(messageReceiverOptions);
 	}
 
 	@Bean
@@ -55,13 +65,28 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	MessageListener messageListener(ReactiveKafkaConsumerTemplate<String, Message> consumerTemplate,
-									ConversationStorage conversationStorage,
-									PostMan postMan) {
-		MessageService messageService = new MessageService(conversationStorage, postMan);
-		MessageListener messageListener = new MessageListener(consumerTemplate, messageService);
+	ConversationService conversationService(ConversationStorage conversationStorage,
+											PostMan postMan) {
+		return new ConversationService(conversationStorage, postMan);
+	}
+
+	@Bean
+	MessageListener messageListener(ReactiveKafkaConsumerTemplate<String, Message> reactiveMessageConsumerTemplate,
+									ConversationService conversationService) {
+		MessageListener messageListener = new MessageListener(reactiveMessageConsumerTemplate, conversationService);
 		messageListener.listen();
 
 		return messageListener;
 	}
+
+	@Bean
+	ConnectionListener connectionListener(ReactiveKafkaConsumerTemplate<String, UserConnection> reactiveConnectionConsumerTemplate,
+										  ConversationService conversationService) {
+		ConnectionListener connectionListener = new ConnectionListener(reactiveConnectionConsumerTemplate, conversationService);
+		connectionListener.listen();
+
+		return connectionListener;
+	}
+
+
 }

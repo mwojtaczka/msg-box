@@ -1,5 +1,8 @@
 package com.maciej.wojtaczka.messagebox.persistence;
 
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
+import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
@@ -52,7 +55,7 @@ public class CassandraConversationStorage implements ConversationStorage {
 								  });
 	}
 
-	public Flux<Message> fetchConversationMessages(String conversationId) {
+	public Flux<Message> fetchConversationMessages(UUID conversationId) {
 		SimpleStatement selectMessages = QueryBuilder.selectFrom("message_box", "message")
 													 .all()
 													 .whereColumn("conversation_id").isEqualTo(literal(conversationId))
@@ -61,36 +64,65 @@ public class CassandraConversationStorage implements ConversationStorage {
 		return cassandraOperations.execute(selectMessages)
 								  .flatMapMany(ReactiveResultSet::rows)
 								  .map(row -> Message.builder()
-												 .conversationId(row.getString("conversation_id"))
-												 .authorId(row.getUuid("author_id"))
-												 .time(row.getInstant("time"))
-												 .content(row.getString("content"))
-												 .build());
+													 .conversationId(row.getUuid("conversation_id"))
+													 .authorId(row.getUuid("author_id"))
+													 .time(row.getInstant("time"))
+													 .content(row.getString("content"))
+													 .build());
 	}
 
 	@Override
-	public Mono<Conversation> getConversation(String conversationId) {
+	public Mono<Conversation> getConversation(UUID conversationId) {
 		SimpleStatement selectConversation = QueryBuilder.selectFrom("message_box", "conversation")
 														 .all()
 														 .whereColumn("conversation_id").isEqualTo(literal(conversationId))
+														 .limit(1)
 														 .build();
 
 		return cassandraOperations.execute(selectConversation)
 								  .flatMapMany(ReactiveResultSet::rows)
 								  .next()
 								  .map(row -> {
-									  String id = row.getString("conversation_id");
+									  UUID id = row.getUuid("conversation_id");
 									  Set<UUID> interlocutors = row.getSet("interlocutors", UUID.class);
 									  return Conversation.builder().conversationId(id).interlocutors(interlocutors).build();
 								  });
 	}
 
+	@Override
+	public Flux<Conversation> getUserConversations(UUID userId, int count) {
+		SimpleStatement selectConversations = QueryBuilder.selectFrom("message_box", "conversation_by_user")
+														  .all()
+														  .whereColumn("user_id").isEqualTo(literal(userId))
+														  .limit(count)
+														  .build();
+
+		return cassandraOperations.execute(selectConversations)
+								  .flatMapMany(ReactiveResultSet::rows)
+								  .mapNotNull(row -> row.getUuid("conversation_id"))
+								  .flatMap(this::getConversation);
+	}
+
 	public Mono<Void> insertConversation(Conversation conversation) {
+		BatchStatementBuilder batchStatementBuilder = BatchStatement.builder(BatchType.LOGGED);
+
 		SimpleStatement insertConversation = QueryBuilder.insertInto("message_box", "conversation")
 														 .value("conversation_id", literal(conversation.getConversationId()))
 														 .value("interlocutors", literal(conversation.getInterlocutors()))
 														 .build();
-		return cassandraOperations.execute(insertConversation)
+		batchStatementBuilder.addStatements(insertConversation);
+
+		for (UUID userId : conversation.getInterlocutors()) {
+			SimpleStatement insertConversationByUser = QueryBuilder.insertInto("message_box", "conversation_by_user")
+																   .value("conversation_id", literal(conversation.getConversationId()))
+																   .value("user_id", literal(userId))
+																   .build();
+			batchStatementBuilder.addStatements(insertConversationByUser);
+		}
+
+		BatchStatement batchStatement = batchStatementBuilder.build();
+
+		return cassandraOperations.execute(batchStatement)
 								  .flatMap(result -> Mono.empty());
 	}
 }

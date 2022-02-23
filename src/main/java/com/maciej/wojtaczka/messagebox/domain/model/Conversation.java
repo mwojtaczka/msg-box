@@ -12,11 +12,19 @@ import java.util.stream.Collectors;
 @Builder
 public class Conversation {
 
-	private final String conversationId;
+	private final UUID conversationId;
 	private Set<UUID> interlocutors;
 
 	public boolean doesMsgBelong(Message message) {
 		return interlocutors.contains(message.getAuthorId());
+	}
+
+	public static Conversation createFaceToFace(UserConnection connection) {
+
+		return Conversation.builder()
+						   .conversationId(UUID.randomUUID())
+						   .interlocutors(Set.of(connection.getUser1(), connection.getUser2()))
+						   .build();
 	}
 
 	public Envelope accept(Message message) {

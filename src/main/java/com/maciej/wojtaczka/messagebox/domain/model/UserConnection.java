@@ -2,18 +2,15 @@ package com.maciej.wojtaczka.messagebox.domain.model;
 
 import lombok.Builder;
 import lombok.Value;
-import lombok.With;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Value
 @Builder
-@With
-public class Message {
+@Value
+public class UserConnection {
 
-    UUID authorId;
-	Instant time;
-	String content;
-	UUID conversationId;
+	UUID user1;
+	UUID user2;
+	Instant connectionDate;
 }
