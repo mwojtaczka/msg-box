@@ -41,7 +41,6 @@ class ConnectionListenerTest {
 		EmbeddedCassandraServerHelper.startEmbeddedCassandra();
 		CqlSession session = EmbeddedCassandraServerHelper.getSession();
 		new CQLDataLoader(session).load(new ClassPathCQLDataSet("schema.cql"));
-
 	}
 
 	@AfterAll
@@ -65,7 +64,9 @@ class ConnectionListenerTest {
 
 		//then
 		Thread.sleep(1000);
-		StepVerifier.create(Flux.merge(storage.getUserConversations(user1, 1), storage.getUserConversations(user2, 1)))
+		Flux.merge(storage.getUserConversations(user1), storage.getUserConversations(user2))
+			.doOnNext(x -> System.out.println("result: " + x)).blockLast();
+		StepVerifier.create(Flux.merge(storage.getUserConversations(user1), storage.getUserConversations(user2)))
 					.assertNext(conversation -> Assertions.assertThat(conversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2))
 					.assertNext(conversation -> Assertions.assertThat(conversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2))
 					.verifyComplete();

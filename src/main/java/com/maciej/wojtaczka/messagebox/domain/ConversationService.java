@@ -6,6 +6,7 @@ import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Comparator;
 import java.util.UUID;
 
 public class ConversationService {
@@ -25,7 +26,8 @@ public class ConversationService {
 	}
 
 	public Flux<Conversation> getUserConversations(UUID userId) { //TODO introduce pagination
-		return conversationStorage.getUserConversations(userId, 10);
+		return conversationStorage.getUserConversations(userId)
+								  .sort(Comparator.comparing(Conversation::getLastActivity).reversed());
 	}
 
 	public Mono<Void> acceptMessage(Message message) {
@@ -33,7 +35,7 @@ public class ConversationService {
 								  .filter(conversation -> conversation.doesMsgBelong(message))
 								  .map(conversation -> conversation.accept(message))
 								  .flatMap(envelope -> postMan.deliver(envelope)
-															  .then(conversationStorage.storeNewMessage(envelope.getMessage()))
+															  .then(conversationStorage.storeNewMessage(envelope))
 								  );
 	}
 }

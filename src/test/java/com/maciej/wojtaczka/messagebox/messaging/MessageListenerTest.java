@@ -3,10 +3,9 @@ package com.maciej.wojtaczka.messagebox.messaging;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.persistence.CassandraConversationStorage;
+import com.maciej.wojtaczka.messagebox.utils.ConversationFixture;
 import com.maciej.wojtaczka.messagebox.utils.KafkaTestListener;
 import org.cassandraunit.CQLDataLoader;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
@@ -23,7 +22,6 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -46,7 +44,7 @@ class MessageListenerTest {
 	private ObjectMapper objectMapper;
 
 	@Autowired
-	private CassandraConversationStorage storage;
+	private ConversationFixture $;
 
 	@BeforeAll
 	static void startCassandra() throws IOException, InterruptedException {
@@ -65,18 +63,11 @@ class MessageListenerTest {
 
 		kafkaTestListener.listenToTopic(KafkaPostMan.MESSAGE_ACCEPTED_TOPIC, 1);
 
-		//given conversation exists
 		UUID conversationId = UUID.randomUUID();
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID msgReceiver = UUID.randomUUID();
 
-		Conversation conversation = Conversation.builder()
-												.conversationId(conversationId)
-												.interlocutors(Set.of(msgAuthorId, msgReceiver))
-												.build();
-
-		storage.insertConversation(conversation).block();
-		//conversation exists
+		$.givenConversationWithId(conversationId).betweenUsers(msgAuthorId, msgReceiver).exists();
 
 		Message inboundMsg = Message.builder()
 									.authorId(msgAuthorId)
@@ -101,7 +92,7 @@ class MessageListenerTest {
 		//verify message storage
 		Thread.sleep(100);
 
-		StepVerifier.create(storage.fetchConversationMessages(conversationId))
+		StepVerifier.create($.cassandraConversationStorage.fetchConversationMessages(conversationId))
 					.assertNext(msg -> assertAll(() -> assertThat(msg.getAuthorId()).isEqualTo(msgAuthorId),
 												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),
 												 () -> assertThat(msg.getContent()).isEqualTo("Hello!"),

@@ -14,6 +14,7 @@ public class Conversation {
 
 	private final UUID conversationId;
 	private Set<UUID> interlocutors;
+	private Instant lastActivity;
 
 	public boolean doesMsgBelong(Message message) {
 		return interlocutors.contains(message.getAuthorId());
@@ -23,6 +24,7 @@ public class Conversation {
 
 		return Conversation.builder()
 						   .conversationId(UUID.randomUUID())
+						   .lastActivity(Instant.now())
 						   .interlocutors(Set.of(connection.getUser1(), connection.getUser2()))
 						   .build();
 	}
@@ -36,5 +38,9 @@ public class Conversation {
 										   .filter(interlocutor -> !message.getAuthorId().equals(interlocutor))
 										   .collect(Collectors.toSet());
 		return Envelope.wrap(withTime, receivers);
+	}
+
+	public Set<UUID> getInterlocutors() {
+		return Set.copyOf(interlocutors);
 	}
 }

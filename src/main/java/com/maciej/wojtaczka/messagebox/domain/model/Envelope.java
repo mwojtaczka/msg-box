@@ -16,4 +16,8 @@ public class Envelope {
 	public static Envelope wrap(Message message, Collection<UUID> interlocutors) {
 		return new Envelope(message, List.copyOf(interlocutors));
 	}
+
+	public List<UUID> getReceivers() {
+		return List.copyOf(receivers);
+	}
 }
