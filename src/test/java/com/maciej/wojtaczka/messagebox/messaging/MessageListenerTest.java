@@ -11,7 +11,7 @@ import com.maciej.wojtaczka.messagebox.utils.KafkaTestListener;
 import org.cassandraunit.CQLDataLoader;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,9 +55,9 @@ class MessageListenerTest {
 		new CQLDataLoader(session).load(new ClassPathCQLDataSet("schema.cql"));
 	}
 
-	@AfterEach
-	void cleanup() {
-		EmbeddedCassandraServerHelper.cleanDataEmbeddedCassandra("message_box");
+	@AfterAll
+	static void cleanCassandra() {
+		EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
 	}
 
 	@Test

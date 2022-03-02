@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions;
 import org.cassandraunit.CQLDataLoader;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,12 @@ class ConnectionListenerTest {
 		EmbeddedCassandraServerHelper.startEmbeddedCassandra();
 		CqlSession session = EmbeddedCassandraServerHelper.getSession();
 		new CQLDataLoader(session).load(new ClassPathCQLDataSet("schema.cql"));
+
+	}
+
+	@AfterAll
+	static void cleanCassandra() {
+		EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
 	}
 
 	@Test
