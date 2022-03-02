@@ -2,6 +2,7 @@ package com.maciej.wojtaczka.messagebox.domain;
 
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
+import com.maciej.wojtaczka.messagebox.domain.model.Message;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -16,4 +17,6 @@ public interface ConversationStorage {
 	Mono<Void> insertConversation(Conversation conversation);
 
     Mono<Conversation> getConversation(UUID conversationId);
+
+	Flux<Message> getMessages(UUID conversationId);
 }

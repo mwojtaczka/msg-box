@@ -6,7 +6,6 @@ import com.maciej.wojtaczka.messagebox.utils.ConversationFixture;
 import org.cassandraunit.CQLDataLoader;
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-import org.junit.Ignore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,7 +47,6 @@ class GetConversationsRequestHandlerTest {
 	}
 
 	@Test
-	@Ignore
 	void shouldReturnUserConversationOrderedByLastMessageTime() {
 		//given
 		UUID userId = UUID.randomUUID();

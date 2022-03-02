@@ -124,6 +124,23 @@ public class CassandraConversationStorage implements ConversationStorage {
 	}
 
 	@Override
+	public Flux<Message> getMessages(UUID conversationId) {
+		SimpleStatement selectMessages = QueryBuilder.selectFrom("message_box", "message")
+											.all()
+											.whereColumn("conversation_id").isEqualTo(literal(conversationId))
+											.build();
+
+		return cassandraOperations.execute(selectMessages)
+								  .flatMapMany(ReactiveResultSet::rows)
+								  .map(row -> Message.builder()
+													 .conversationId(row.getUuid("conversation_id"))
+													 .authorId(row.getUuid("author_id"))
+													 .content(row.getString("content"))
+													 .time(row.getInstant("time"))
+													 .build());
+	}
+
+	@Override
 	public Flux<Conversation> getUserConversations(UUID userId) {
 		SimpleStatement selectConversations = QueryBuilder.selectFrom("message_box", "conversation_by_user")
 														  .all()
