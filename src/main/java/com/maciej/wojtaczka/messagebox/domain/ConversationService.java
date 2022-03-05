@@ -2,6 +2,7 @@ package com.maciej.wojtaczka.messagebox.domain;
 
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
 import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,6 +33,15 @@ public class ConversationService {
 								  .flatMap(envelope -> postMan.deliver(envelope)
 															  .then(conversationStorage.storeNewMessage(envelope))
 								  );
+	}
+
+	public Mono<Void> updateMessageStatus(MessageSeen messageSeen) {
+
+		return conversationStorage.getConversation(messageSeen.getConversationId())
+								  .filter(conversation -> conversation.isValid(messageSeen))
+								  .map(conversation -> conversation.accept(messageSeen))
+								  .flatMap(postMan::notifyAboutMsgStatusUpdated)
+								  .then(conversationStorage.updateMessageSeen(messageSeen));
 	}
 
 	public Flux<Conversation> getUserConversations(UUID userId) { //TODO introduce pagination

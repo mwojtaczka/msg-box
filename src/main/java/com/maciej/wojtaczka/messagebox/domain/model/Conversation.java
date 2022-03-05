@@ -29,15 +29,31 @@ public class Conversation {
 						   .build();
 	}
 
-	public Envelope accept(Message message) {
+	public Envelope<Message> accept(Message message) {
 		if (!doesMsgBelong(message)) {
 			throw new RuntimeException("Message cannot be applied to conversation");
 		}
-		Message withTime = message.withTime(Instant.now());
-		Set<UUID> receivers = interlocutors.stream()
-										   .filter(interlocutor -> !message.getAuthorId().equals(interlocutor))
-										   .collect(Collectors.toSet());
+		Message withTime = message.withTime(Instant.now())
+								  .withSeenBy(Set.of(message.getAuthorId()));
+		Set<UUID> receivers = getReceivers(message.getAuthorId());
 		return Envelope.wrap(withTime, receivers);
+	}
+
+	private Set<UUID> getReceivers(UUID except) {
+		return interlocutors.stream()
+							.filter(interlocutor -> !except.equals(interlocutor))
+							.collect(Collectors.toSet());
+	}
+
+	public Envelope<MessageSeen> accept(MessageSeen messageSeen) {
+		if (!isValid(messageSeen)) {
+			throw new RuntimeException("Message seen status cannot be applied to conversation");
+		}
+		return Envelope.wrap(messageSeen, getReceivers(messageSeen.getSeenBy()));
+	}
+
+	public boolean isValid(MessageSeen messageSeen) {
+		return interlocutors.contains(messageSeen.getSeenBy()) && interlocutors.contains(messageSeen.getAuthorId());
 	}
 
 	public Set<UUID> getInterlocutors() {

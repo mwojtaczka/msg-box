@@ -60,7 +60,7 @@ public class ConversationFixture {
 					.sorted(Comparator.comparing(Message::getTime))
 					.peek(conversation::accept)
 					.forEach(msg -> cassandraConversationStorage.storeNewMessage(Envelope.wrap(msg, conversation.accept(msg).getReceivers()))
-																	 .block());
+																.block());
 		}
 
 	}
@@ -71,10 +71,12 @@ public class ConversationFixture {
 
 		public MessageBuilder(ConversationBuilder conversationBuilder) {
 			this.conversationBuilder = conversationBuilder;
+			UUID authorId = UUID.randomUUID();
 			messageBuilder.conversationId(conversationBuilder.conversationId)
 						  .time(Instant.now())
 						  .content("Default message content")
-						  .authorId(UUID.randomUUID());
+						  .seenBy(Set.of(authorId))
+						  .authorId(authorId);
 		}
 
 		public MessageBuilder withContent(String content) {
@@ -83,7 +85,7 @@ public class ConversationFixture {
 		}
 
 		public MessageBuilder writtenBy(UUID authorId) {
-			messageBuilder.authorId(authorId);
+			messageBuilder.authorId(authorId).seenBy(Set.of(authorId));
 			return this;
 		}
 

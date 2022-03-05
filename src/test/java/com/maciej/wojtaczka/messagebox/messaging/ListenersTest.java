@@ -2,9 +2,11 @@ package com.maciej.wojtaczka.messagebox.messaging;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
 import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import com.maciej.wojtaczka.messagebox.utils.ConversationFixture;
 import com.maciej.wojtaczka.messagebox.utils.KafkaTestListener;
@@ -39,10 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class ListenersTest {
 
 	@Autowired
-	private KafkaTemplate<String, Message> kafkaMessageTemplate;
-
-	@Autowired
-	private KafkaTemplate<String, UserConnection> kafkaConnectionTemplate;
+	private KafkaTemplate<String, String> kafkaTestMessageTemplate;
 
 	@Autowired
 	private KafkaTestListener kafkaTestListener;
@@ -81,16 +80,18 @@ class ListenersTest {
 									.content("Hello!")
 									.conversationId(conversationId)
 									.build();
+		String inboundMessageJson = objectMapper.writeValueAsString(inboundMsg);
 
 		//when
-		kafkaMessageTemplate.send(MessagingConfiguration.MESSAGE_RECEIVED_TOPIC, inboundMsg).get();
+		kafkaTestMessageTemplate.send(MessagingConfiguration.MESSAGE_RECEIVED_TOPIC, inboundMessageJson).get();
 
 		//then verify message forwarded
 		String msgJson = kafkaTestListener.receiveContentFromTopic(KafkaPostMan.MESSAGE_ACCEPTED_TOPIC).orElseThrow();
-		Envelope sent = objectMapper.readValue(msgJson, Envelope.class);
+		Envelope<Message> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
+		});
 
 		assertThat(sent.getReceivers()).containsExactly(msgReceiver);
-		Message message = sent.getMessage();
+		Message message = sent.getPayload();
 		assertThat(message.getConversationId()).isEqualTo(conversationId);
 		assertThat(message.getAuthorId()).isEqualTo(msgAuthorId);
 		assertThat(message.getContent()).isEqualTo("Hello!");
@@ -103,13 +104,14 @@ class ListenersTest {
 					.assertNext(msg -> assertAll(() -> assertThat(msg.getAuthorId()).isEqualTo(msgAuthorId),
 												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),
 												 () -> assertThat(msg.getContent()).isEqualTo("Hello!"),
-												 () -> assertThat(msg.getTime()).isNotNull()
+												 () -> assertThat(msg.getTime()).isNotNull(),
+												 () -> assertThat(msg.getSeenBy()).containsExactly(msgAuthorId)
 					))
 					.verifyComplete();
 	}
 
 	@Test
-	void shouldCreateNewFaceToFaceConversation() throws ExecutionException, InterruptedException {
+	void shouldCreateNewFaceToFaceConversation() throws ExecutionException, InterruptedException, JsonProcessingException {
 		//given
 		UUID user1 = UUID.randomUUID();
 		UUID user2 = UUID.randomUUID();
@@ -118,9 +120,10 @@ class ListenersTest {
 													   .user2(user2)
 													   .connectionDate(Instant.parse("2007-12-03T10:15:30.00Z"))
 													   .build();
+		String connectionJson = objectMapper.writeValueAsString(givenConnection);
 
 		//when
-		kafkaConnectionTemplate.send(MessagingConfiguration.CONNECTION_CREATED_TOPIC, givenConnection).get();
+		kafkaTestMessageTemplate.send(MessagingConfiguration.CONNECTION_CREATED_TOPIC, connectionJson).get();
 
 		//then
 		Thread.sleep(1000);
@@ -128,6 +131,55 @@ class ListenersTest {
 									   $.cassandraConversationStorage.getUserConversations(user2)))
 					.assertNext(conversation -> Assertions.assertThat(conversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2))
 					.assertNext(conversation -> Assertions.assertThat(conversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2))
+					.verifyComplete();
+	}
+
+	@Test
+	void shouldUpdateMessageStatus() throws JsonProcessingException, ExecutionException, InterruptedException {
+
+		kafkaTestListener.listenToTopic(KafkaPostMan.MESSAGE_STATUS_UPDATED, 1);
+
+		UUID conversationId = UUID.randomUUID();
+		UUID msgAuthorId = UUID.randomUUID();
+		UUID msgReceiver = UUID.randomUUID();
+		Instant msgTime = Instant.parse("2007-12-03T10:15:30.00Z");
+
+		$.givenConversationWithId(conversationId).betweenUsers(msgAuthorId, msgReceiver)
+		 .withMessage().writtenBy(msgAuthorId).atTime(msgTime)
+		 .andTheConversation().exists();
+
+		MessageSeen seenBy = MessageSeen.builder()
+										.authorId(msgAuthorId)
+										.conversationId(conversationId)
+										.time(msgTime)
+										.seenBy(msgReceiver)
+										.build();
+		String jsonSeenBy = objectMapper.writeValueAsString(seenBy);
+
+		//when
+		kafkaTestMessageTemplate.send(MessagingConfiguration.MESSAGE_SEEN_TOPIC, jsonSeenBy).get();
+
+		//then verify message status forwarded
+		String msgJson = kafkaTestListener.receiveContentFromTopic(KafkaPostMan.MESSAGE_STATUS_UPDATED).orElseThrow();
+		Envelope<MessageSeen> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
+		});
+
+		assertThat(sent.getReceivers()).containsExactly(msgAuthorId);
+		MessageSeen messageSeen = sent.getPayload();
+		assertThat(messageSeen.getConversationId()).isEqualTo(conversationId);
+		assertThat(messageSeen.getAuthorId()).isEqualTo(msgAuthorId);
+		assertThat(messageSeen.getTime()).isNotNull();
+		assertThat(messageSeen.getSeenBy()).isEqualTo(msgReceiver);
+
+		//verify message storage
+		Thread.sleep(100);
+
+		StepVerifier.create($.cassandraConversationStorage.fetchConversationMessages(conversationId))
+					.assertNext(msg -> assertAll(() -> assertThat(msg.getAuthorId()).isEqualTo(msgAuthorId),
+												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),
+												 () -> assertThat(msg.getTime()).isEqualTo(msgTime),
+												 () -> assertThat(msg.getSeenBy()).containsExactlyInAnyOrder(msgAuthorId, msgReceiver)
+					))
 					.verifyComplete();
 	}
 

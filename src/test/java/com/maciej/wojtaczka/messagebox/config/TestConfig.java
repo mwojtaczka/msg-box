@@ -1,8 +1,6 @@
 package com.maciej.wojtaczka.messagebox.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -16,24 +14,15 @@ import org.springframework.data.cassandra.core.convert.CassandraConverter;
 import org.springframework.data.cassandra.core.cql.session.DefaultBridgedReactiveSession;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.serializer.JsonSerializer;
 import reactor.core.publisher.Mono;
 
 @Configuration
 public class TestConfig {
 
 	@Bean
-	KafkaTemplate<String, Message> kafkaMessageTemplate(KafkaProperties properties) {
-		DefaultKafkaProducerFactory<String, Message> producerFactory =
-				new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(), new StringSerializer(), new JsonSerializer<>());
-
-		return new KafkaTemplate<>(producerFactory);
-	}
-
-	@Bean
-	KafkaTemplate<String, UserConnection> kafkaConnectionTemplate(KafkaProperties properties) {
-		DefaultKafkaProducerFactory<String, UserConnection> producerFactory =
-				new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(), new StringSerializer(), new JsonSerializer<>());
+	KafkaTemplate<String, String> kafkaTestMessageTemplate(KafkaProperties properties) {
+		DefaultKafkaProducerFactory<String, String> producerFactory =
+				new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(), new StringSerializer(), new StringSerializer());
 
 		return new KafkaTemplate<>(producerFactory);
 	}

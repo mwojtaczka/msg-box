@@ -9,12 +9,12 @@ import java.util.UUID;
 
 @AllArgsConstructor
 @Value
-public class Envelope {
-	Message message;
+public class Envelope<T> {
+	T payload;
 	List<UUID> receivers;
 
-	public static Envelope wrap(Message message, Collection<UUID> interlocutors) {
-		return new Envelope(message, List.copyOf(interlocutors));
+	public static <T> Envelope<T> wrap(T payload, Collection<UUID> interlocutors) {
+		return new Envelope<>(payload, List.copyOf(interlocutors));
 	}
 
 	public List<UUID> getReceivers() {

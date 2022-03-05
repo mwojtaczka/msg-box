@@ -101,14 +101,116 @@ class ConversationTest {
 									  .build();
 
 		//when
-		Envelope toBeSent = givenConversation.accept(givenMessage);
+		Envelope<Message> toBeSent = givenConversation.accept(givenMessage);
 
 		//then
 		assertThat(toBeSent.getReceivers()).containsExactlyInAnyOrder(receiver1, receiver2);
-		assertThat(toBeSent.getMessage().getAuthorId()).isEqualTo(msgAuthorId);
-		assertThat(toBeSent.getMessage().getConversationId()).isEqualTo(conversationId);
-		assertThat(toBeSent.getMessage().getTime()).isNotNull();
-		assertThat(toBeSent.getMessage().getContent()).isEqualTo("Hello");
+		assertThat(toBeSent.getPayload().getAuthorId()).isEqualTo(msgAuthorId);
+		assertThat(toBeSent.getPayload().getConversationId()).isEqualTo(conversationId);
+		assertThat(toBeSent.getPayload().getTime()).isNotNull();
+		assertThat(toBeSent.getPayload().getContent()).isEqualTo("Hello");
+		assertThat(toBeSent.getPayload().getSeenBy()).containsExactly(msgAuthorId);
+	}
+
+	@Test
+	void shouldMessageSeenBeValid() {
+		//given
+		UUID msgAuthorId = UUID.randomUUID();
+		UUID receiver1 = UUID.randomUUID();
+		UUID receiver2 = UUID.randomUUID();
+		UUID conversationId = UUID.randomUUID();
+
+		Conversation givenConversation =
+				Conversation.builder()
+							.conversationId(conversationId)
+							.interlocutors(Set.of(msgAuthorId, receiver1, receiver2))
+							.build();
+		var messageSeen = MessageSeen.builder()
+									 .conversationId(conversationId)
+									 .authorId(msgAuthorId)
+									 .seenBy(receiver1)
+									 .build();
+		//when
+		boolean result = givenConversation.isValid(messageSeen);
+
+		//then
+		assertThat(result).isTrue();
+	}
+
+	@Test
+	void shouldMessageSeenBeInvalid_whenMsgAuthorDoesntBelongToConversation() {
+		//given
+		UUID msgAuthorId = UUID.randomUUID();
+		UUID seenBy = UUID.randomUUID();
+		UUID receiver2 = UUID.randomUUID();
+		UUID conversationId = UUID.randomUUID();
+
+		Conversation givenConversation =
+				Conversation.builder()
+							.conversationId(conversationId)
+							.interlocutors(Set.of(seenBy, receiver2))
+							.build();
+		var messageSeen = MessageSeen.builder()
+									 .conversationId(conversationId)
+									 .authorId(msgAuthorId)
+									 .seenBy(seenBy)
+									 .build();
+		//when
+		boolean result = givenConversation.isValid(messageSeen);
+
+		//then
+		assertThat(result).isFalse();
+	}
+
+	@Test
+	void shouldMessageSeenBeInvalid_whenUserThatSawMsgDoesntBelongToConversation() {
+		//given
+		UUID msgAuthorId = UUID.randomUUID();
+		UUID seenBy = UUID.randomUUID();
+		UUID receiver2 = UUID.randomUUID();
+		UUID conversationId = UUID.randomUUID();
+
+		Conversation givenConversation =
+				Conversation.builder()
+							.conversationId(conversationId)
+							.interlocutors(Set.of(msgAuthorId, receiver2))
+							.build();
+		var messageSeen = MessageSeen.builder()
+									 .conversationId(conversationId)
+									 .authorId(msgAuthorId)
+									 .seenBy(seenBy)
+									 .build();
+		//when
+		boolean result = givenConversation.isValid(messageSeen);
+
+		//then
+		assertThat(result).isFalse();
+	}
+
+	@Test
+	void shouldCreateEnvelopeWithNotification() {
+		//given
+		UUID msgAuthorId = UUID.randomUUID();
+		UUID seenBy = UUID.randomUUID();
+		UUID receiver2 = UUID.randomUUID();
+		UUID conversationId = UUID.randomUUID();
+
+		Conversation givenConversation =
+				Conversation.builder()
+							.conversationId(conversationId)
+							.interlocutors(Set.of(msgAuthorId, seenBy, receiver2))
+							.build();
+		var messageSeen = MessageSeen.builder()
+									 .conversationId(conversationId)
+									 .authorId(msgAuthorId)
+									 .seenBy(seenBy)
+									 .build();
+		//when
+		Envelope<MessageSeen> toBeSent = givenConversation.accept(messageSeen);
+
+		//then
+		assertThat(toBeSent.getReceivers()).containsExactlyInAnyOrder(msgAuthorId, receiver2);
+		assertThat(toBeSent.getPayload()).isEqualTo(messageSeen);
 	}
 
 }

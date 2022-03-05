@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS message_box.message
     time            timestamp,
     content         text,
     conversation_id uuid,
+    seen_by         set<uuid>,
     PRIMARY KEY ((conversation_id), time, author_id)
 ) WITH CLUSTERING ORDER BY (time DESC);
 

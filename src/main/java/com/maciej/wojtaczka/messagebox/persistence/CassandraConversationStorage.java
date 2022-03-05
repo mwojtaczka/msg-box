@@ -10,6 +10,7 @@ import com.maciej.wojtaczka.messagebox.domain.ConversationStorage;
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
 import org.springframework.data.cassandra.ReactiveResultSet;
 import org.springframework.data.cassandra.core.ReactiveCassandraOperations;
 import org.springframework.stereotype.Repository;
@@ -36,15 +37,16 @@ public class CassandraConversationStorage implements ConversationStorage {
 	}
 
 	@Override
-	public Mono<Void> storeNewMessage(Envelope envelope) {
+	public Mono<Void> storeNewMessage(Envelope<Message> envelope) {
 		BatchStatementBuilder statementsBuilder = BatchStatement.builder(BatchType.LOGGED);
 
-		Message message = envelope.getMessage();
+		Message message = envelope.getPayload();
 		SimpleStatement messageInsert = QueryBuilder.insertInto("message_box", "message")
 													.value("author_id", literal(message.getAuthorId()))
 													.value("time", literal(message.getTime()))
 													.value("content", literal(message.getContent()))
 													.value("conversation_id", literal(message.getConversationId()))
+													.value("seen_by", literal(message.getSeenBy()))
 													.build();
 		statementsBuilder.addStatement(messageInsert);
 
@@ -98,6 +100,7 @@ public class CassandraConversationStorage implements ConversationStorage {
 													 .authorId(row.getUuid("author_id"))
 													 .time(row.getInstant("time"))
 													 .content(row.getString("content"))
+													 .seenBy(row.getSet("seen_by", UUID.class))
 													 .build());
 	}
 
@@ -126,9 +129,9 @@ public class CassandraConversationStorage implements ConversationStorage {
 	@Override
 	public Flux<Message> getMessages(UUID conversationId) {
 		SimpleStatement selectMessages = QueryBuilder.selectFrom("message_box", "message")
-											.all()
-											.whereColumn("conversation_id").isEqualTo(literal(conversationId))
-											.build();
+													 .all()
+													 .whereColumn("conversation_id").isEqualTo(literal(conversationId))
+													 .build();
 
 		return cassandraOperations.execute(selectMessages)
 								  .flatMapMany(ReactiveResultSet::rows)
@@ -138,6 +141,18 @@ public class CassandraConversationStorage implements ConversationStorage {
 													 .content(row.getString("content"))
 													 .time(row.getInstant("time"))
 													 .build());
+	}
+
+	@Override
+	public Mono<Void> updateMessageSeen(MessageSeen messageSeen) {
+		SimpleStatement updateSeenBy = QueryBuilder.update("message_box", "message")
+												   .appendSetElement("seen_by", literal(messageSeen.getSeenBy()))
+												   .whereColumn("conversation_id").isEqualTo(literal(messageSeen.getConversationId()))
+												   .whereColumn("time").isEqualTo(literal(messageSeen.getTime()))
+												   .whereColumn("author_id").isEqualTo(literal(messageSeen.getAuthorId()))
+												   .build();
+		return cassandraOperations.execute(updateSeenBy)
+								  .then();
 	}
 
 	@Override
