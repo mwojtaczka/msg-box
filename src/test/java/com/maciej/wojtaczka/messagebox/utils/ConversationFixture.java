@@ -8,10 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,6 +65,25 @@ public class ConversationFixture {
 					.peek(conversation::accept)
 					.forEach(msg -> cassandraConversationStorage.storeNewMessage(Envelope.wrap(msg, conversation.accept(msg).getReceivers()))
 																.block());
+
+			removeUnreadConversationForUsersWhoHaveSeenAllMessages(conversation);
+		}
+
+		private void removeUnreadConversationForUsersWhoHaveSeenAllMessages(Conversation conversation) {
+			Map<UUID, List<Message>> messagesThatUserSaw = conversation.getInterlocutors()
+																	   .stream()
+																	   .collect(Collectors.toMap(Function.identity(), this::getMessagesSeenBy));
+			int allMessagesInConversationCount = messages.size();
+
+			List<UUID> usersWhoSawAllMessages = messagesThatUserSaw.entrySet().stream()
+																   .filter(entry -> entry.getValue().size() == allMessagesInConversationCount)
+																   .map(Map.Entry::getKey)
+																   .collect(Collectors.toList());
+			usersWhoSawAllMessages.forEach(userId -> cassandraConversationStorage.removeUnreadConversation(conversationId, userId).block());
+		}
+
+		private List<Message> getMessagesSeenBy(UUID userId) {
+			return messages.stream().filter(message -> message.getSeenBy().contains(userId)).collect(Collectors.toList());
 		}
 
 	}
@@ -68,6 +91,7 @@ public class ConversationFixture {
 	public static class MessageBuilder {
 		private final Message.MessageBuilder messageBuilder = Message.builder();
 		private final ConversationBuilder conversationBuilder;
+		private Set<UUID> seenBy = new HashSet<>();
 
 		public MessageBuilder(ConversationBuilder conversationBuilder) {
 			this.conversationBuilder = conversationBuilder;
@@ -86,6 +110,8 @@ public class ConversationFixture {
 
 		public MessageBuilder writtenBy(UUID authorId) {
 			messageBuilder.authorId(authorId).seenBy(Set.of(authorId));
+			messageBuilder.authorId(authorId);
+			seenBy.add(authorId);
 			return this;
 		}
 
@@ -94,14 +120,25 @@ public class ConversationFixture {
 			return this;
 		}
 
+		public MessageBuilder seenBy(UUID... interlocutors) {
+			Collections.addAll(seenBy, interlocutors);
+			return this;
+		}
+
 		public MessageBuilder andMessage() {
-			conversationBuilder.messages.add(messageBuilder.build());
+			build();
 			return new MessageBuilder(conversationBuilder);
 		}
 
 		public ConversationBuilder andTheConversation() {
-			conversationBuilder.messages.add(messageBuilder.build());
+			build();
 			return conversationBuilder;
+		}
+
+		private void build() {
+			seenBy.add(messageBuilder.build().getAuthorId());
+			messageBuilder.seenBy(seenBy);
+			conversationBuilder.messages.add(messageBuilder.build());
 		}
 	}
 

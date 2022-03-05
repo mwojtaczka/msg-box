@@ -178,7 +178,7 @@ class ListenersTest {
 		assertThat(messageSeen.getTime()).isNotNull();
 		assertThat(messageSeen.getSeenBy()).isEqualTo(msgReceiver);
 
-		//verify message storage
+		//verify message update
 		Thread.sleep(100);
 
 		StepVerifier.create($.cassandraConversationStorage.fetchConversationMessages(conversationId))
@@ -187,6 +187,10 @@ class ListenersTest {
 												 () -> assertThat(msg.getTime()).isEqualTo(msgTime),
 												 () -> assertThat(msg.getSeenBy()).containsExactlyInAnyOrder(msgAuthorId, msgReceiver)
 					))
+					.verifyComplete();
+
+		//verify unread conversation removal
+		StepVerifier.create($.cassandraConversationStorage.getUnreadConversationsIndices(msgReceiver))
 					.verifyComplete();
 	}
 

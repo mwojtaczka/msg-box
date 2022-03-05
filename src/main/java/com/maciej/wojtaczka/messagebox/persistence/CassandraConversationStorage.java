@@ -160,7 +160,23 @@ public class CassandraConversationStorage implements ConversationStorage {
 												   .whereColumn("time").isEqualTo(literal(messageSeen.getTime()))
 												   .whereColumn("author_id").isEqualTo(literal(messageSeen.getAuthorId()))
 												   .build();
-		return cassandraOperations.execute(updateSeenBy)
+		SimpleStatement removeUnreadConversation = QueryBuilder.deleteFrom("message_box", "conversation_unread")
+															   .whereColumn("user_id").isEqualTo(literal(messageSeen.getSeenBy()))
+															   .whereColumn("conversation_id").isEqualTo(literal(messageSeen.getConversationId()))
+															   .build();
+		BatchStatement statements = BatchStatement.builder(BatchType.LOGGED)
+												  .addStatements(updateSeenBy, removeUnreadConversation)
+												  .build();
+		return cassandraOperations.execute(statements)
+								  .then();
+	}
+
+	public Mono<Void> removeUnreadConversation(UUID conversationId, UUID userId) {
+		SimpleStatement removeUnreadConversation = QueryBuilder.deleteFrom("message_box", "conversation_unread")
+															   .whereColumn("user_id").isEqualTo(literal(userId))
+															   .whereColumn("conversation_id").isEqualTo(literal(conversationId))
+															   .build();
+		return cassandraOperations.execute(removeUnreadConversation)
 								  .then();
 	}
 

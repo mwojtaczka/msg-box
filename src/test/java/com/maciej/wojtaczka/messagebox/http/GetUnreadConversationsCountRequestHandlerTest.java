@@ -66,7 +66,7 @@ class GetUnreadConversationsCountRequestHandlerTest {
 
 		UUID userId4 = UUID.randomUUID();
 		$.givenConversationWithId(thirdConversation).betweenUsers(userId, userId4)
-		 .withMessage().writtenBy(userId4).atTime(time.plusSeconds(3)) //TODO .seenBy(userId)
+		 .withMessage().writtenBy(userId4).atTime(time.plusSeconds(3)).seenBy(userId)
 		 .andTheConversation().exists();
 
 		$.givenConversationWithId(forthConversation).betweenUsers(userId, UUID.randomUUID())
@@ -81,6 +81,6 @@ class GetUnreadConversationsCountRequestHandlerTest {
 													 .exchange();
 		//then
 		result.expectStatus().isOk()
-			  .expectBody(String.class).isEqualTo("3");
+			  .expectBody(String.class).isEqualTo("2");
 	}
 }
