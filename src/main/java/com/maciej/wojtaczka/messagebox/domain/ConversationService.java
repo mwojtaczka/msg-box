@@ -52,4 +52,9 @@ public class ConversationService {
 	public Flux<Message> getConversationMessages(UUID conversationId) { //TODO introduce pagination
 		return conversationStorage.getMessages(conversationId);
 	}
+
+	public Mono<Long> getUnreadConversationsCount(UUID userId) {
+		return conversationStorage.getUnreadConversationsIndices(userId)
+								  .count();
+	}
 }

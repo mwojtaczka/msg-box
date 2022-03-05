@@ -22,4 +22,6 @@ public interface ConversationStorage {
 	Flux<Message> getMessages(UUID conversationId);
 
 	Mono<Void> updateMessageSeen(MessageSeen messageSeen);
+
+	Flux<UUID> getUnreadConversationsIndices(UUID userId);
 }

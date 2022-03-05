@@ -26,4 +26,11 @@ CREATE TABLE IF NOT EXISTS message_box.message
     PRIMARY KEY ((conversation_id), time, author_id)
 ) WITH CLUSTERING ORDER BY (time DESC);
 
+CREATE TABLE IF NOT EXISTS message_box.conversation_unread
+(
+    user_id       uuid,
+    conversation_id uuid,
+    PRIMARY KEY ((user_id), conversation_id)
+);
+
 

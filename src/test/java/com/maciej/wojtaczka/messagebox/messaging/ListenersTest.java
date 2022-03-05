@@ -108,6 +108,13 @@ class ListenersTest {
 												 () -> assertThat(msg.getSeenBy()).containsExactly(msgAuthorId)
 					))
 					.verifyComplete();
+
+		//verify unread conversation
+		StepVerifier.create($.cassandraConversationStorage.getUnreadConversationsIndices(msgReceiver))
+					.assertNext(unreadConversationId -> assertThat(unreadConversationId).isEqualTo(conversationId))
+					.verifyComplete();
+		StepVerifier.create($.cassandraConversationStorage.getUnreadConversationsIndices(msgAuthorId))
+					.verifyComplete();
 	}
 
 	@Test

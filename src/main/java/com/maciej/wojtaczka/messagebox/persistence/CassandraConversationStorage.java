@@ -57,19 +57,28 @@ public class CassandraConversationStorage implements ConversationStorage {
 							.build();
 		statementsBuilder.addStatements(updateConversationLastActivity);
 
-		ArrayList<UUID> usersIdsWeNeedToUpdateConversationsList = new ArrayList<>(envelope.getReceivers());
-		usersIdsWeNeedToUpdateConversationsList.add(message.getAuthorId());
+		ArrayList<UUID> usersIdsWeNeedToUpdateConversations = new ArrayList<>(envelope.getReceivers());
+		usersIdsWeNeedToUpdateConversations.add(message.getAuthorId());
 
-		for (UUID userId : usersIdsWeNeedToUpdateConversationsList) {
+		for (UUID userId : usersIdsWeNeedToUpdateConversations) {
 
-			SimpleStatement insertUpdatedConversationByUser =
+			SimpleStatement insertUpdatedWithLastActivityConversationByUser =
 					QueryBuilder.insertInto("message_box", "conversation_by_user")
 								.value("conversation_id", literal(message.getConversationId()))
 								.value("last_activity", literal(message.getTime()))
 								.value("user_id", literal(userId))
 								.build();
 
-			statementsBuilder.addStatements(insertUpdatedConversationByUser);
+			SimpleStatement insertUnreadConversation = QueryBuilder.insertInto("message_box", "conversation_unread")
+																   .value("user_id", literal(userId))
+																   .value("conversation_id", literal(message.getConversationId()))
+																   .build();
+
+			if (userId.equals(message.getAuthorId())) {
+				statementsBuilder.addStatements(insertUpdatedWithLastActivityConversationByUser);
+			} else {
+				statementsBuilder.addStatements(insertUpdatedWithLastActivityConversationByUser, insertUnreadConversation);
+			}
 		}
 
 		return cassandraOperations.execute(statementsBuilder.build())
@@ -156,6 +165,18 @@ public class CassandraConversationStorage implements ConversationStorage {
 	}
 
 	@Override
+	public Flux<UUID> getUnreadConversationsIndices(UUID userId) {
+		SimpleStatement getUnreadConversations = QueryBuilder.selectFrom("message_box", "conversation_unread")
+															 .all()
+															 .whereColumn("user_id").isEqualTo(literal(userId))
+															 .build();
+
+		return cassandraOperations.execute(getUnreadConversations)
+								  .flatMapMany(ReactiveResultSet::rows)
+								  .mapNotNull(row -> row.getUuid("conversation_id"));
+	}
+
+	@Override
 	public Flux<Conversation> getUserConversations(UUID userId) {
 		SimpleStatement selectConversations = QueryBuilder.selectFrom("message_box", "conversation_by_user")
 														  .all()
@@ -170,6 +191,7 @@ public class CassandraConversationStorage implements ConversationStorage {
 								  .sort(Comparator.comparing(Conversation::getLastActivity).reversed());
 	}
 
+	@Override
 	public Mono<Void> insertConversation(Conversation conversation) {
 		BatchStatementBuilder batchStatementBuilder = BatchStatement.builder(BatchType.LOGGED);
 
