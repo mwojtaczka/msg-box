@@ -35,11 +35,11 @@ public class Conversation {
 		}
 		Message withTime = message.withTime(Instant.now())
 								  .withSeenBy(Set.of(message.getAuthorId()));
-		Set<UUID> receivers = getReceivers(message.getAuthorId());
-		return Envelope.wrap(withTime, receivers);
+		Set<UUID> recipients = getRecipients(message.getAuthorId());
+		return Envelope.wrap(withTime, recipients);
 	}
 
-	private Set<UUID> getReceivers(UUID except) {
+	private Set<UUID> getRecipients(UUID except) {
 		return interlocutors.stream()
 							.filter(interlocutor -> !except.equals(interlocutor))
 							.collect(Collectors.toSet());
@@ -49,7 +49,7 @@ public class Conversation {
 		if (!isValid(messageSeen)) {
 			throw new RuntimeException("Message seen status cannot be applied to conversation");
 		}
-		return Envelope.wrap(messageSeen, getReceivers(messageSeen.getSeenBy()));
+		return Envelope.wrap(messageSeen, getRecipients(messageSeen.getSeenBy()));
 	}
 
 	public boolean isValid(MessageSeen messageSeen) {

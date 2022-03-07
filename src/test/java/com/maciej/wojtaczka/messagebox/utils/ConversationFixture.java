@@ -63,7 +63,7 @@ public class ConversationFixture {
 			messages.stream()
 					.sorted(Comparator.comparing(Message::getTime))
 					.peek(conversation::accept)
-					.forEach(msg -> cassandraConversationStorage.storeNewMessage(Envelope.wrap(msg, conversation.accept(msg).getReceivers()))
+					.forEach(msg -> cassandraConversationStorage.storeNewMessage(Envelope.wrap(msg, conversation.accept(msg).getRecipients()))
 																.block());
 
 			removeUnreadConversationForUsersWhoHaveSeenAllMessages(conversation);

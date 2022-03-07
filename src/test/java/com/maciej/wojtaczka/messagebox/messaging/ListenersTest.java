@@ -90,7 +90,7 @@ class ListenersTest {
 		Envelope<Message> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
 		});
 
-		assertThat(sent.getReceivers()).containsExactly(msgReceiver);
+		assertThat(sent.getRecipients()).containsExactly(msgReceiver);
 		Message message = sent.getPayload();
 		assertThat(message.getConversationId()).isEqualTo(conversationId);
 		assertThat(message.getAuthorId()).isEqualTo(msgAuthorId);
@@ -171,7 +171,7 @@ class ListenersTest {
 		Envelope<MessageSeen> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
 		});
 
-		assertThat(sent.getReceivers()).containsExactly(msgAuthorId);
+		assertThat(sent.getRecipients()).containsExactly(msgAuthorId);
 		MessageSeen messageSeen = sent.getPayload();
 		assertThat(messageSeen.getConversationId()).isEqualTo(conversationId);
 		assertThat(messageSeen.getAuthorId()).isEqualTo(msgAuthorId);

@@ -31,14 +31,14 @@ class ConversationTest {
 	@Test
 	void shouldMessageBelongToConversation() {
 		UUID msgAuthorId = UUID.randomUUID();
-		UUID receiver1 = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID recipient1 = UUID.randomUUID();
+		UUID recipient2 = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(msgAuthorId, receiver1, receiver2))
+							.interlocutors(Set.of(msgAuthorId, recipient1, recipient2))
 							.build();
 
 		Message givenMessage = Message.builder()
@@ -57,14 +57,14 @@ class ConversationTest {
 	@Test
 	void shouldMessageDoesNotBelongToConversation_whenAuthorIsNotWithinInterlocutors() {
 		UUID msgAuthorId = UUID.randomUUID();
-		UUID receiver1 = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID recipient1 = UUID.randomUUID();
+		UUID recipient2 = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(receiver1, receiver2))
+							.interlocutors(Set.of(recipient1, recipient2))
 							.build();
 
 		Message givenMessage = Message.builder()
@@ -84,14 +84,14 @@ class ConversationTest {
 	void shouldAcceptMessageAndCreateEnvelope() {
 		//given
 		UUID msgAuthorId = UUID.randomUUID();
-		UUID receiver1 = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID recipient1 = UUID.randomUUID();
+		UUID recipient2 = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(msgAuthorId, receiver1, receiver2))
+							.interlocutors(Set.of(msgAuthorId, recipient1, recipient2))
 							.build();
 
 		Message givenMessage = Message.builder()
@@ -104,7 +104,7 @@ class ConversationTest {
 		Envelope<Message> toBeSent = givenConversation.accept(givenMessage);
 
 		//then
-		assertThat(toBeSent.getReceivers()).containsExactlyInAnyOrder(receiver1, receiver2);
+		assertThat(toBeSent.getRecipients()).containsExactlyInAnyOrder(recipient1, recipient2);
 		assertThat(toBeSent.getPayload().getAuthorId()).isEqualTo(msgAuthorId);
 		assertThat(toBeSent.getPayload().getConversationId()).isEqualTo(conversationId);
 		assertThat(toBeSent.getPayload().getTime()).isNotNull();
@@ -116,19 +116,19 @@ class ConversationTest {
 	void shouldMessageSeenBeValid() {
 		//given
 		UUID msgAuthorId = UUID.randomUUID();
-		UUID receiver1 = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID recipient1 = UUID.randomUUID();
+		UUID recipient2 = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(msgAuthorId, receiver1, receiver2))
+							.interlocutors(Set.of(msgAuthorId, recipient1, recipient2))
 							.build();
 		var messageSeen = MessageSeen.builder()
 									 .conversationId(conversationId)
 									 .authorId(msgAuthorId)
-									 .seenBy(receiver1)
+									 .seenBy(recipient1)
 									 .build();
 		//when
 		boolean result = givenConversation.isValid(messageSeen);
@@ -142,13 +142,13 @@ class ConversationTest {
 		//given
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID seenBy = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID anotherRecipient = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(seenBy, receiver2))
+							.interlocutors(Set.of(seenBy, anotherRecipient))
 							.build();
 		var messageSeen = MessageSeen.builder()
 									 .conversationId(conversationId)
@@ -167,13 +167,13 @@ class ConversationTest {
 		//given
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID seenBy = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID anotherRecipient = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(msgAuthorId, receiver2))
+							.interlocutors(Set.of(msgAuthorId, anotherRecipient))
 							.build();
 		var messageSeen = MessageSeen.builder()
 									 .conversationId(conversationId)
@@ -192,13 +192,13 @@ class ConversationTest {
 		//given
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID seenBy = UUID.randomUUID();
-		UUID receiver2 = UUID.randomUUID();
+		UUID anotherRecipient = UUID.randomUUID();
 		UUID conversationId = UUID.randomUUID();
 
 		Conversation givenConversation =
 				Conversation.builder()
 							.conversationId(conversationId)
-							.interlocutors(Set.of(msgAuthorId, seenBy, receiver2))
+							.interlocutors(Set.of(msgAuthorId, seenBy, anotherRecipient))
 							.build();
 		var messageSeen = MessageSeen.builder()
 									 .conversationId(conversationId)
@@ -209,7 +209,7 @@ class ConversationTest {
 		Envelope<MessageSeen> toBeSent = givenConversation.accept(messageSeen);
 
 		//then
-		assertThat(toBeSent.getReceivers()).containsExactlyInAnyOrder(msgAuthorId, receiver2);
+		assertThat(toBeSent.getRecipients()).containsExactlyInAnyOrder(msgAuthorId, anotherRecipient);
 		assertThat(toBeSent.getPayload()).isEqualTo(messageSeen);
 	}
 

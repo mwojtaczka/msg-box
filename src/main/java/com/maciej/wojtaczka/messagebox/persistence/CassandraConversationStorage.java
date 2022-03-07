@@ -57,7 +57,7 @@ public class CassandraConversationStorage implements ConversationStorage {
 							.build();
 		statementsBuilder.addStatements(updateConversationLastActivity);
 
-		ArrayList<UUID> usersIdsWeNeedToUpdateConversations = new ArrayList<>(envelope.getReceivers());
+		ArrayList<UUID> usersIdsWeNeedToUpdateConversations = new ArrayList<>(envelope.getRecipients());
 		usersIdsWeNeedToUpdateConversations.add(message.getAuthorId());
 
 		for (UUID userId : usersIdsWeNeedToUpdateConversations) {
