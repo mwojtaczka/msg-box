@@ -29,6 +29,15 @@ public class Conversation {
 						   .build();
 	}
 
+	public static Conversation createGroup(Set<UUID> interlocutorsIndices) {
+		return Conversation.builder()
+						   .conversationId(UUID.randomUUID())
+						   .lastActivity(Instant.now())
+						   .interlocutors(interlocutorsIndices)
+						   .build();
+
+	}
+
 	public Envelope<Message> accept(Message message) {
 		if (!doesMsgBelong(message)) {
 			throw new RuntimeException("Message cannot be applied to conversation");

@@ -8,6 +8,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 
 public class ConversationService {
@@ -24,6 +26,13 @@ public class ConversationService {
 		Conversation newConversation = Conversation.createFaceToFace(connection);
 
 		return conversationStorage.insertConversation(newConversation);
+	}
+
+	public Mono<Conversation> createGroupConversation(List<UUID> interlocutorsIndices) {
+		Conversation newConversation = Conversation.createGroup(new HashSet<>(interlocutorsIndices));
+
+		return conversationStorage.insertConversation(newConversation)
+								  .then(Mono.just(newConversation));
 	}
 
 	public Mono<Void> acceptMessage(Message message) {

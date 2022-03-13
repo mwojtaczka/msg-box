@@ -11,6 +11,7 @@ import static com.maciej.wojtaczka.messagebox.http.GetConversationsRequestHandle
 import static com.maciej.wojtaczka.messagebox.http.GetMessagesRequestHandler.MESSAGES_URL;
 import static com.maciej.wojtaczka.messagebox.http.GetUnreadConversationsCountRequestHandler.UNREAD_CONVERSATIONS_COUNT_URL;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
+import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 
 @Configuration
 public class ControllerConfiguration {
@@ -21,10 +22,12 @@ public class ControllerConfiguration {
 		var getConversationsRequestHandler = new GetConversationsRequestHandler(conversationService);
 		var getMessagesRequestHandler = new GetMessagesRequestHandler(conversationService);
 		var getUnreadConversationsCountRequestHandler = new GetUnreadConversationsCountRequestHandler(conversationService);
+		var createConversationsRequestHandler = new CreateConversationsRequestHandler(conversationService);
 
 		return RouterFunctions
 				.route(GET(CONVERSATIONS_URL), getConversationsRequestHandler)
 				.andRoute(GET(MESSAGES_URL), getMessagesRequestHandler)
-				.andRoute(GET(UNREAD_CONVERSATIONS_COUNT_URL), getUnreadConversationsCountRequestHandler);
+				.andRoute(GET(UNREAD_CONVERSATIONS_COUNT_URL), getUnreadConversationsCountRequestHandler)
+				.andRoute(POST(CreateConversationsRequestHandler.CONVERSATIONS_URL), createConversationsRequestHandler);
 	}
 }

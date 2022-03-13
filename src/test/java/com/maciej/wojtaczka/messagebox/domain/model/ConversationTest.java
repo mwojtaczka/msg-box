@@ -25,7 +25,25 @@ class ConversationTest {
 
 		//then
 		assertThat(newConversation.getConversationId()).isNotNull();
+		assertThat(newConversation.getLastActivity()).isNotNull();
 		assertThat(newConversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2);
+	}
+
+	@Test
+	void shouldCreateNewGroupConversation() {
+		//given
+		UUID user1 = UUID.randomUUID();
+		UUID user2 = UUID.randomUUID();
+		UUID user3 = UUID.randomUUID();
+		Set<UUID> groupMembers = Set.of(user1, user2, user3);
+
+		//when
+		Conversation newConversation = Conversation.createGroup(groupMembers);
+
+		//then
+		assertThat(newConversation.getConversationId()).isNotNull();
+		assertThat(newConversation.getLastActivity()).isNotNull();
+		assertThat(newConversation.getInterlocutors()).containsExactlyInAnyOrder(user1, user2, user3);
 	}
 
 	@Test
