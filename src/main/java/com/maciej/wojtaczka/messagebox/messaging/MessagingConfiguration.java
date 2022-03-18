@@ -40,6 +40,7 @@ public class MessagingConfiguration {
 				basicReceiverOptions.subscription(Set.of(MESSAGE_RECEIVED_TOPIC))
 									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
 									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, Message.class)
+									.consumerProperty(JsonDeserializer.USE_TYPE_INFO_HEADERS, false)
 									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
 		return new ReactiveKafkaConsumerTemplate<>(messageReceiverOptions);
@@ -52,6 +53,7 @@ public class MessagingConfiguration {
 				basicReceiverOptions.subscription(Set.of(CONNECTION_CREATED_TOPIC))
 									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
 									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, UserConnection.class)
+									.consumerProperty(JsonDeserializer.USE_TYPE_INFO_HEADERS, false)
 									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
 		return new ReactiveKafkaConsumerTemplate<>(messageReceiverOptions);
@@ -64,6 +66,7 @@ public class MessagingConfiguration {
 				basicReceiverOptions.subscription(Set.of(MESSAGE_SEEN_TOPIC))
 									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
 									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, MessageSeen.class)
+									.consumerProperty(JsonDeserializer.USE_TYPE_INFO_HEADERS, false)
 									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
 		return new ReactiveKafkaConsumerTemplate<>(messageReceiverOptions);
@@ -125,6 +128,5 @@ public class MessagingConfiguration {
 
 		return messageListener;
 	}
-
 
 }
