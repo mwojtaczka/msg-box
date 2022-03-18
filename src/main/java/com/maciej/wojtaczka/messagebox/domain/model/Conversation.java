@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -40,10 +41,10 @@ public class Conversation {
 
 	public Envelope<Message> accept(Message message) {
 		if (!doesMsgBelong(message)) {
-			throw new RuntimeException("Message cannot be applied to conversation");
+			throw new RuntimeException("Message cannot be applied to the conversation");
 		}
 		Message withTime = message.withTime(Instant.now())
-								  .withSeenBy(Set.of(message.getAuthorId()));
+								  .withStatusByInterlocutor(Map.of(message.getAuthorId(), MessageStatusUpdated.Status.SEEN));
 		Set<UUID> recipients = getRecipients(message.getAuthorId());
 		return Envelope.wrap(withTime, recipients);
 	}
@@ -54,15 +55,15 @@ public class Conversation {
 							.collect(Collectors.toSet());
 	}
 
-	public Envelope<MessageSeen> accept(MessageSeen messageSeen) {
-		if (!isValid(messageSeen)) {
-			throw new RuntimeException("Message seen status cannot be applied to conversation");
+	public Envelope<MessageStatusUpdated> accept(MessageStatusUpdated messageStatus) {
+		if (!isValid(messageStatus)) {
+			throw new RuntimeException("Message status cannot be applied to the conversation");
 		}
-		return Envelope.wrap(messageSeen, getRecipients(messageSeen.getSeenBy()));
+		return Envelope.wrap(messageStatus, getRecipients(messageStatus.getUpdatedBy()));
 	}
 
-	public boolean isValid(MessageSeen messageSeen) {
-		return interlocutors.contains(messageSeen.getSeenBy()) && interlocutors.contains(messageSeen.getAuthorId());
+	public boolean isValid(MessageStatusUpdated messageStatus) {
+		return interlocutors.contains(messageStatus.getUpdatedBy()) && interlocutors.contains(messageStatus.getAuthorId());
 	}
 
 	public Set<UUID> getInterlocutors() {

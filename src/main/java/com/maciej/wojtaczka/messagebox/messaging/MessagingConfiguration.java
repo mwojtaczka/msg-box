@@ -5,7 +5,7 @@ import com.maciej.wojtaczka.messagebox.domain.ConversationStorage;
 import com.maciej.wojtaczka.messagebox.domain.PostMan;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -28,7 +28,7 @@ public class MessagingConfiguration {
 
 	public static final String MESSAGE_RECEIVED_TOPIC = "message-received";
 	public static final String CONNECTION_CREATED_TOPIC = "connection-created";
-	public static final String MESSAGE_SEEN_TOPIC = "message-seen";
+	public static final String MESSAGE_STATUS_CHANGED_TOPIC = "message-status-changed";
 
 	@Value("${spring.application.name}")
 	private String applicationName;
@@ -60,12 +60,12 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	ReactiveKafkaConsumerTemplate<String, MessageSeen> reactiveMessageStatusConsumerTemplate(KafkaProperties kafkaProperties) {
-		ReceiverOptions<String, MessageSeen> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
-		ReceiverOptions<String, MessageSeen> messageReceiverOptions =
-				basicReceiverOptions.subscription(Set.of(MESSAGE_SEEN_TOPIC))
+	ReactiveKafkaConsumerTemplate<String, MessageStatusUpdated> reactiveMessageStatusConsumerTemplate(KafkaProperties kafkaProperties) {
+		ReceiverOptions<String, MessageStatusUpdated> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
+		ReceiverOptions<String, MessageStatusUpdated> messageReceiverOptions =
+				basicReceiverOptions.subscription(Set.of(MESSAGE_STATUS_CHANGED_TOPIC))
 									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
-									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, MessageSeen.class)
+									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, MessageStatusUpdated.class)
 									.consumerProperty(JsonDeserializer.USE_TYPE_INFO_HEADERS, false)
 									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
@@ -85,7 +85,7 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	ReactiveKafkaProducerTemplate<String, Envelope<MessageSeen>> reactiveKafkaMessagesStatusProducerTemplate(
+	ReactiveKafkaProducerTemplate<String, Envelope<MessageStatusUpdated>> reactiveKafkaMessagesStatusProducerTemplate(
 			KafkaProperties properties) {
 
 		Map<String, Object> props = properties
@@ -121,7 +121,7 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	MessageStatusListener messageStatusListener(ReactiveKafkaConsumerTemplate<String, MessageSeen> reactiveMessageStatusConsumerTemplate,
+	MessageStatusListener messageStatusListener(ReactiveKafkaConsumerTemplate<String, MessageStatusUpdated> reactiveMessageStatusConsumerTemplate,
 												ConversationService conversationService) {
 		var messageListener = new MessageStatusListener(reactiveMessageStatusConsumerTemplate, conversationService);
 		messageListener.listen();

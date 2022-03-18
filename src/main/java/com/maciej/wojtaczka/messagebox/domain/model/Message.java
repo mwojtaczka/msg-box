@@ -5,7 +5,7 @@ import lombok.Value;
 import lombok.With;
 
 import java.time.Instant;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 
 @Value
@@ -17,5 +17,5 @@ public class Message {
 	Instant time;
 	String content;
 	UUID conversationId;
-	Set<UUID> seenBy;
+	Map<UUID, MessageStatusUpdated.Status> statusByInterlocutor;
 }

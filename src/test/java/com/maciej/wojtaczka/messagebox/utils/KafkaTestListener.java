@@ -83,7 +83,7 @@ public class KafkaTestListener implements DisposableBean {
 
 	@SneakyThrows
 	public Optional<String> receiveContentFromTopic(String topic) {
-		latchPerTopic.get(topic).await(500, TimeUnit.MILLISECONDS);
+		latchPerTopic.get(topic).await(1000, TimeUnit.MILLISECONDS);
 		ConsumerRecord<String, String> msg = recordsPerTopic.get(topic).poll();
 		if (msg == null) {
 			return Optional.empty();

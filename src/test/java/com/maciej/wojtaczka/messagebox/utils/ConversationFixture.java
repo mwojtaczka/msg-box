@@ -3,13 +3,15 @@ package com.maciej.wojtaczka.messagebox.utils;
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import com.maciej.wojtaczka.messagebox.persistence.CassandraConversationStorage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated.Status.SEEN;
 
 @Component
 public class ConversationFixture {
@@ -83,7 +87,7 @@ public class ConversationFixture {
 		}
 
 		private List<Message> getMessagesSeenBy(UUID userId) {
-			return messages.stream().filter(message -> message.getSeenBy().contains(userId)).collect(Collectors.toList());
+			return messages.stream().filter(message -> message.getStatusByInterlocutor().containsKey(userId)).collect(Collectors.toList());
 		}
 
 	}
@@ -91,7 +95,7 @@ public class ConversationFixture {
 	public static class MessageBuilder {
 		private final Message.MessageBuilder messageBuilder = Message.builder();
 		private final ConversationBuilder conversationBuilder;
-		private Set<UUID> seenBy = new HashSet<>();
+		private Map<UUID, MessageStatusUpdated.Status> seenBy = new HashMap<>();
 
 		public MessageBuilder(ConversationBuilder conversationBuilder) {
 			this.conversationBuilder = conversationBuilder;
@@ -99,7 +103,7 @@ public class ConversationFixture {
 			messageBuilder.conversationId(conversationBuilder.conversationId)
 						  .time(Instant.now())
 						  .content("Default message content")
-						  .seenBy(Set.of(authorId))
+						  .statusByInterlocutor(Map.of(authorId, SEEN))
 						  .authorId(authorId);
 		}
 
@@ -109,9 +113,9 @@ public class ConversationFixture {
 		}
 
 		public MessageBuilder writtenBy(UUID authorId) {
-			messageBuilder.authorId(authorId).seenBy(Set.of(authorId));
+			messageBuilder.authorId(authorId).statusByInterlocutor(Map.of(authorId, SEEN));
 			messageBuilder.authorId(authorId);
-			seenBy.add(authorId);
+			seenBy.put(authorId, SEEN);
 			return this;
 		}
 
@@ -121,7 +125,9 @@ public class ConversationFixture {
 		}
 
 		public MessageBuilder seenBy(UUID... interlocutors) {
-			Collections.addAll(seenBy, interlocutors);
+			Map<UUID, MessageStatusUpdated.Status> collect = Arrays.stream(interlocutors)
+																   .collect(Collectors.toMap(Function.identity(), x -> SEEN));
+			seenBy.putAll(collect);
 			return this;
 		}
 
@@ -136,8 +142,8 @@ public class ConversationFixture {
 		}
 
 		private void build() {
-			seenBy.add(messageBuilder.build().getAuthorId());
-			messageBuilder.seenBy(seenBy);
+			seenBy.put(messageBuilder.build().getAuthorId(), SEEN);
+			messageBuilder.statusByInterlocutor(seenBy);
 			conversationBuilder.messages.add(messageBuilder.build());
 		}
 	}

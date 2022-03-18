@@ -3,7 +3,7 @@ package com.maciej.wojtaczka.messagebox.domain;
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -21,7 +21,7 @@ public interface ConversationStorage {
 
 	Flux<Message> getMessages(UUID conversationId);
 
-	Mono<Void> updateMessageSeen(MessageSeen messageSeen);
+	Mono<Void> updateMessageSeen(MessageStatusUpdated messageStatus);
 
 	Flux<UUID> getUnreadConversationsIndices(UUID userId);
 }

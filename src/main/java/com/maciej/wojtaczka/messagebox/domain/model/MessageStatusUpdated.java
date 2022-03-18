@@ -8,14 +8,17 @@ import java.util.UUID;
 
 @Value
 @Builder
-//todo: MessageStatusUpdated
-public class MessageSeen {
+public class MessageStatusUpdated {
 
 	UUID conversationId;
 	UUID authorId;
 	Instant time;
 
-	UUID seenBy;
-//updated by
-	//status: DELIVERED, SEEN
+	UUID updatedBy;
+	Status status;
+
+	public enum Status {
+		DELIVERED, SEEN
+	}
+
 }

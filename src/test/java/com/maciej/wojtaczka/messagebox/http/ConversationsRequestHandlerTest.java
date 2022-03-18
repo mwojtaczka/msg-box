@@ -97,6 +97,11 @@ class ConversationsRequestHandlerTest {
 			  });
 	}
 
+	@Test //TODO
+	void getMessages_shouldReturnMessage() {
+
+	}
+
 	@Test
 	void getMessages_shouldReturnUserConversationMessagesOrderedByMessageTimeDesc() {
 		//given

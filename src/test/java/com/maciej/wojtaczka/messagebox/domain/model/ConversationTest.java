@@ -3,9 +3,11 @@ package com.maciej.wojtaczka.messagebox.domain.model;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated.Status.SEEN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ConversationTest {
@@ -127,7 +129,7 @@ class ConversationTest {
 		assertThat(toBeSent.getPayload().getConversationId()).isEqualTo(conversationId);
 		assertThat(toBeSent.getPayload().getTime()).isNotNull();
 		assertThat(toBeSent.getPayload().getContent()).isEqualTo("Hello");
-		assertThat(toBeSent.getPayload().getSeenBy()).containsExactly(msgAuthorId);
+		assertThat(toBeSent.getPayload().getStatusByInterlocutor()).containsExactly(Map.entry(msgAuthorId, SEEN));
 	}
 
 	@Test
@@ -143,10 +145,10 @@ class ConversationTest {
 							.conversationId(conversationId)
 							.interlocutors(Set.of(msgAuthorId, recipient1, recipient2))
 							.build();
-		var messageSeen = MessageSeen.builder()
+		var messageSeen = MessageStatusUpdated.builder()
 									 .conversationId(conversationId)
 									 .authorId(msgAuthorId)
-									 .seenBy(recipient1)
+									 .updatedBy(recipient1)
 									 .build();
 		//when
 		boolean result = givenConversation.isValid(messageSeen);
@@ -168,10 +170,10 @@ class ConversationTest {
 							.conversationId(conversationId)
 							.interlocutors(Set.of(seenBy, anotherRecipient))
 							.build();
-		var messageSeen = MessageSeen.builder()
+		var messageSeen = MessageStatusUpdated.builder()
 									 .conversationId(conversationId)
 									 .authorId(msgAuthorId)
-									 .seenBy(seenBy)
+									 .updatedBy(seenBy)
 									 .build();
 		//when
 		boolean result = givenConversation.isValid(messageSeen);
@@ -193,10 +195,10 @@ class ConversationTest {
 							.conversationId(conversationId)
 							.interlocutors(Set.of(msgAuthorId, anotherRecipient))
 							.build();
-		var messageSeen = MessageSeen.builder()
+		var messageSeen = MessageStatusUpdated.builder()
 									 .conversationId(conversationId)
 									 .authorId(msgAuthorId)
-									 .seenBy(seenBy)
+									 .updatedBy(seenBy)
 									 .build();
 		//when
 		boolean result = givenConversation.isValid(messageSeen);
@@ -218,13 +220,13 @@ class ConversationTest {
 							.conversationId(conversationId)
 							.interlocutors(Set.of(msgAuthorId, seenBy, anotherRecipient))
 							.build();
-		var messageSeen = MessageSeen.builder()
+		var messageSeen = MessageStatusUpdated.builder()
 									 .conversationId(conversationId)
 									 .authorId(msgAuthorId)
-									 .seenBy(seenBy)
+									 .updatedBy(seenBy)
 									 .build();
 		//when
-		Envelope<MessageSeen> toBeSent = givenConversation.accept(messageSeen);
+		Envelope<MessageStatusUpdated> toBeSent = givenConversation.accept(messageSeen);
 
 		//then
 		assertThat(toBeSent.getRecipients()).containsExactlyInAnyOrder(msgAuthorId, anotherRecipient);

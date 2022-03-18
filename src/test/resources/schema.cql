@@ -22,13 +22,13 @@ CREATE TABLE IF NOT EXISTS message_box.message
     time            timestamp,
     content         text,
     conversation_id uuid,
-    seen_by         set<uuid>,
+    status_by       map<uuid, text>,
     PRIMARY KEY ((conversation_id), time, author_id)
 ) WITH CLUSTERING ORDER BY (time DESC);
 
 CREATE TABLE IF NOT EXISTS message_box.conversation_unread
 (
-    user_id       uuid,
+    user_id         uuid,
     conversation_id uuid,
     PRIMARY KEY ((user_id), conversation_id)
 );

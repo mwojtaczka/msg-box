@@ -10,7 +10,7 @@ import com.maciej.wojtaczka.messagebox.domain.ConversationStorage;
 import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import org.springframework.data.cassandra.ReactiveResultSet;
 import org.springframework.data.cassandra.core.ReactiveCassandraOperations;
 import org.springframework.stereotype.Repository;
@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
 
@@ -46,7 +47,7 @@ public class CassandraConversationStorage implements ConversationStorage {
 													.value("time", literal(message.getTime()))
 													.value("content", literal(message.getContent()))
 													.value("conversation_id", literal(message.getConversationId()))
-													.value("seen_by", literal(message.getSeenBy()))
+													.value("status_by", literal(convertMapValuesToString(message.getStatusByInterlocutor())))
 													.build();
 		statementsBuilder.addStatement(messageInsert);
 
@@ -109,7 +110,8 @@ public class CassandraConversationStorage implements ConversationStorage {
 													 .authorId(row.getUuid("author_id"))
 													 .time(row.getInstant("time"))
 													 .content(row.getString("content"))
-													 .seenBy(row.getSet("seen_by", UUID.class))
+													 .statusByInterlocutor(
+															 convertMapValuesToStatus(row.getMap("status_by", UUID.class, String.class)))
 													 .build());
 	}
 
@@ -153,16 +155,18 @@ public class CassandraConversationStorage implements ConversationStorage {
 	}
 
 	@Override
-	public Mono<Void> updateMessageSeen(MessageSeen messageSeen) {
+	public Mono<Void> updateMessageSeen(MessageStatusUpdated messageStatus) {
 		SimpleStatement updateSeenBy = QueryBuilder.update("message_box", "message")
-												   .appendSetElement("seen_by", literal(messageSeen.getSeenBy()))
-												   .whereColumn("conversation_id").isEqualTo(literal(messageSeen.getConversationId()))
-												   .whereColumn("time").isEqualTo(literal(messageSeen.getTime()))
-												   .whereColumn("author_id").isEqualTo(literal(messageSeen.getAuthorId()))
+												   .appendMapEntry("status_by",
+																   literal(messageStatus.getUpdatedBy()),
+																   literal(messageStatus.getStatus().name()))
+												   .whereColumn("conversation_id").isEqualTo(literal(messageStatus.getConversationId()))
+												   .whereColumn("time").isEqualTo(literal(messageStatus.getTime()))
+												   .whereColumn("author_id").isEqualTo(literal(messageStatus.getAuthorId()))
 												   .build();
 		SimpleStatement removeUnreadConversation = QueryBuilder.deleteFrom("message_box", "conversation_unread")
-															   .whereColumn("user_id").isEqualTo(literal(messageSeen.getSeenBy()))
-															   .whereColumn("conversation_id").isEqualTo(literal(messageSeen.getConversationId()))
+															   .whereColumn("user_id").isEqualTo(literal(messageStatus.getUpdatedBy()))
+															   .whereColumn("conversation_id").isEqualTo(literal(messageStatus.getConversationId()))
 															   .build();
 		BatchStatement statements = BatchStatement.builder(BatchType.LOGGED)
 												  .addStatements(updateSeenBy, removeUnreadConversation)
@@ -231,5 +235,18 @@ public class CassandraConversationStorage implements ConversationStorage {
 
 		return cassandraOperations.execute(batchStatement)
 								  .flatMap(result -> Mono.empty());
+	}
+
+	Map<UUID, String> convertMapValuesToString(Map<UUID, MessageStatusUpdated.Status> map) {
+		return map.entrySet().stream()
+				  .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().name()));
+	}
+
+	Map<UUID, MessageStatusUpdated.Status> convertMapValuesToStatus(Map<UUID, String> map) {
+		if (map == null) {
+			return Map.of();
+		}
+		return map.entrySet().stream()
+				  .collect(Collectors.toMap(Map.Entry::getKey, e -> MessageStatusUpdated.Status.valueOf(e.getValue())));
 	}
 }

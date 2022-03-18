@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maciej.wojtaczka.messagebox.domain.model.Envelope;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
-import com.maciej.wojtaczka.messagebox.domain.model.MessageSeen;
+import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
 import com.maciej.wojtaczka.messagebox.utils.ConversationFixture;
 import com.maciej.wojtaczka.messagebox.utils.KafkaTestListener;
@@ -28,9 +28,12 @@ import reactor.test.StepVerifier;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
+import static com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated.Status.SEEN;
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
@@ -105,7 +108,7 @@ class ListenersTest {
 												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),
 												 () -> assertThat(msg.getContent()).isEqualTo("Hello!"),
 												 () -> assertThat(msg.getTime()).isNotNull(),
-												 () -> assertThat(msg.getSeenBy()).containsExactly(msgAuthorId)
+												 () -> assertThat(msg.getStatusByInterlocutor()).containsExactly(entry(msgAuthorId, SEEN))
 					))
 					.verifyComplete();
 
@@ -149,34 +152,37 @@ class ListenersTest {
 		UUID conversationId = UUID.randomUUID();
 		UUID msgAuthorId = UUID.randomUUID();
 		UUID msgReceiver = UUID.randomUUID();
+		UUID anotherInterlocutor = UUID.randomUUID();
 		Instant msgTime = Instant.parse("2007-12-03T10:15:30.00Z");
 
-		$.givenConversationWithId(conversationId).betweenUsers(msgAuthorId, msgReceiver)
+		$.givenConversationWithId(conversationId).betweenUsers(msgAuthorId, msgReceiver, anotherInterlocutor)
 		 .withMessage().writtenBy(msgAuthorId).atTime(msgTime)
 		 .andTheConversation().exists();
 
-		MessageSeen seenBy = MessageSeen.builder()
-										.authorId(msgAuthorId)
-										.conversationId(conversationId)
-										.time(msgTime)
-										.seenBy(msgReceiver)
-										.build();
+		MessageStatusUpdated seenBy = MessageStatusUpdated.builder()
+														  .authorId(msgAuthorId)
+														  .conversationId(conversationId)
+														  .time(msgTime)
+														  .updatedBy(msgReceiver)
+														  .status(SEEN)
+														  .build();
 		String jsonSeenBy = objectMapper.writeValueAsString(seenBy);
 
 		//when
-		kafkaTestMessageTemplate.send(MessagingConfiguration.MESSAGE_SEEN_TOPIC, jsonSeenBy).get();
+		kafkaTestMessageTemplate.send(MessagingConfiguration.MESSAGE_STATUS_CHANGED_TOPIC, jsonSeenBy).get();
 
 		//then verify message status forwarded
 		String msgJson = kafkaTestListener.receiveContentFromTopic(KafkaPostMan.MESSAGE_STATUS_UPDATED).orElseThrow();
-		Envelope<MessageSeen> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
+		Envelope<MessageStatusUpdated> sent = objectMapper.readValue(msgJson, new TypeReference<>() {
 		});
 
-		assertThat(sent.getRecipients()).containsExactly(msgAuthorId);
-		MessageSeen messageSeen = sent.getPayload();
-		assertThat(messageSeen.getConversationId()).isEqualTo(conversationId);
-		assertThat(messageSeen.getAuthorId()).isEqualTo(msgAuthorId);
-		assertThat(messageSeen.getTime()).isNotNull();
-		assertThat(messageSeen.getSeenBy()).isEqualTo(msgReceiver);
+		assertThat(sent.getRecipients()).containsExactlyInAnyOrder(msgAuthorId, anotherInterlocutor);
+		MessageStatusUpdated messageStatus = sent.getPayload();
+		assertThat(messageStatus.getConversationId()).isEqualTo(conversationId);
+		assertThat(messageStatus.getAuthorId()).isEqualTo(msgAuthorId);
+		assertThat(messageStatus.getTime()).isNotNull();
+		assertThat(messageStatus.getUpdatedBy()).isEqualTo(msgReceiver);
+		assertThat(messageStatus.getStatus()).isEqualTo(SEEN);
 
 		//verify message update
 		Thread.sleep(100);
@@ -185,7 +191,8 @@ class ListenersTest {
 					.assertNext(msg -> assertAll(() -> assertThat(msg.getAuthorId()).isEqualTo(msgAuthorId),
 												 () -> assertThat(msg.getConversationId()).isEqualTo(conversationId),
 												 () -> assertThat(msg.getTime()).isEqualTo(msgTime),
-												 () -> assertThat(msg.getSeenBy()).containsExactlyInAnyOrder(msgAuthorId, msgReceiver)
+												 () -> assertThat(msg.getStatusByInterlocutor())
+														 .containsExactlyInAnyOrderEntriesOf(Map.of(msgAuthorId, SEEN, msgReceiver, SEEN))
 					))
 					.verifyComplete();
 
