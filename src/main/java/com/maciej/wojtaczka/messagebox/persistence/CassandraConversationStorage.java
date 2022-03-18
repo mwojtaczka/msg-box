@@ -151,6 +151,8 @@ public class CassandraConversationStorage implements ConversationStorage {
 													 .authorId(row.getUuid("author_id"))
 													 .content(row.getString("content"))
 													 .time(row.getInstant("time"))
+													 .statusByInterlocutor(
+															 convertMapValuesToStatus(row.getMap("status_by", UUID.class, String.class)))
 													 .build());
 	}
 

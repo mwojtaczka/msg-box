@@ -21,8 +21,10 @@ import reactor.test.StepVerifier;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated.Status.SEEN;
 import static com.maciej.wojtaczka.messagebox.http.GetConversationsRequestHandler.CONVERSATIONS_URL;
 import static com.maciej.wojtaczka.messagebox.http.GetMessagesRequestHandler.MESSAGES_URL;
 import static com.maciej.wojtaczka.messagebox.http.GetUnreadConversationsCountRequestHandler.UNREAD_CONVERSATIONS_COUNT_URL;
@@ -99,7 +101,34 @@ class ConversationsRequestHandlerTest {
 
 	@Test //TODO
 	void getMessages_shouldReturnMessage() {
+		//given
+		UUID authorId = UUID.randomUUID();
+		UUID userId2 = UUID.randomUUID();
+		UUID conversationId = UUID.randomUUID();
+		Instant time = parse("2007-12-03T10:15:30.00Z");
 
+		$.givenConversationWithId(conversationId).betweenUsers(authorId, userId2)
+		 .withMessage().writtenBy(authorId).withContent("Hello").atTime(time).seenBy(userId2)
+		 .andTheConversation().exists();
+
+		//when
+		WebTestClient.ResponseSpec result = webClient.get()
+													 .uri(uriBuilder -> uriBuilder.path(MESSAGES_URL)
+																				  .build(conversationId.toString()))
+													 .exchange();
+
+		//then
+		result.expectStatus().isOk()
+			  .expectBodyList(Message.class)
+			  .hasSize(1)
+			  .value(messages -> {
+				  Message message = messages.get(0);
+				  assertThat(message.getAuthorId()).isEqualTo(authorId);
+				  assertThat(message.getContent()).isEqualTo("Hello");
+				  assertThat(message.getTime()).isEqualTo(time);
+				  assertThat(message.getStatusByInterlocutor())
+						  .containsExactlyInAnyOrderEntriesOf(Map.of(authorId, SEEN, userId2, SEEN));
+			  });
 	}
 
 	@Test
