@@ -4,6 +4,7 @@ import com.maciej.wojtaczka.messagebox.domain.model.Conversation;
 import com.maciej.wojtaczka.messagebox.domain.model.Message;
 import com.maciej.wojtaczka.messagebox.domain.model.MessageStatusUpdated;
 import com.maciej.wojtaczka.messagebox.domain.model.UserConnection;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -12,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 public class ConversationService {
 
 	private final ConversationStorage conversationStorage;
@@ -23,9 +25,19 @@ public class ConversationService {
 	}
 
 	public Mono<Void> createFaceToFaceConversation(UserConnection connection) {
+		log.info("Creating face to face conversations for connection: {}", connection);
 		Conversation newConversation = Conversation.createFaceToFace(connection);
 
-		return conversationStorage.insertConversation(newConversation);
+		return conversationStorage.insertConversation(newConversation)
+				.doFinally(signalType -> {
+					switch (signalType) {
+						case ON_COMPLETE:
+							log.info("Conversation created for connection: {}", connection);
+							break;
+						case ON_ERROR:
+							log.error("Conversation NOT created for connection: {}", connection);
+					}
+				});
 	}
 
 	public Mono<Conversation> createGroupConversation(List<UUID> interlocutorsIndices) {
