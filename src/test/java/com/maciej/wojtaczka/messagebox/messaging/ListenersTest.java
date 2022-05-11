@@ -28,6 +28,7 @@ import reactor.test.StepVerifier;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -130,10 +131,11 @@ class ListenersTest {
 													   .user2(user2)
 													   .connectionDate(Instant.parse("2007-12-03T10:15:30.00Z"))
 													   .build();
-		String connectionJson = objectMapper.writeValueAsString(givenConnection);
+		Envelope<UserConnection> envelopeWithConnection = Envelope.wrap(givenConnection, List.of());
+		String jsonPayload = objectMapper.writeValueAsString(envelopeWithConnection);
 
 		//when
-		kafkaTestMessageTemplate.send(MessagingConfiguration.CONNECTION_CREATED_TOPIC, connectionJson).get();
+		kafkaTestMessageTemplate.send(MessagingConfiguration.CONNECTION_CREATED_TOPIC, jsonPayload).get();
 
 		//then
 		Thread.sleep(1000);

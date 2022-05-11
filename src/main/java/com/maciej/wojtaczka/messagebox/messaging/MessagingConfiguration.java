@@ -1,5 +1,6 @@
 package com.maciej.wojtaczka.messagebox.messaging;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.maciej.wojtaczka.messagebox.domain.ConversationService;
 import com.maciej.wojtaczka.messagebox.domain.ConversationStorage;
 import com.maciej.wojtaczka.messagebox.domain.PostMan;
@@ -47,12 +48,12 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	ReactiveKafkaConsumerTemplate<String, UserConnection> reactiveConnectionConsumerTemplate(KafkaProperties kafkaProperties) {
-		ReceiverOptions<String, UserConnection> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
-		ReceiverOptions<String, UserConnection> messageReceiverOptions =
+	ReactiveKafkaConsumerTemplate<String, Envelope<UserConnection>> reactiveConnectionConsumerTemplate(KafkaProperties kafkaProperties) {
+		ReceiverOptions<String, Envelope<UserConnection>> basicReceiverOptions = ReceiverOptions.create(kafkaProperties.buildConsumerProperties());
+		ReceiverOptions<String, Envelope<UserConnection>> messageReceiverOptions =
 				basicReceiverOptions.subscription(Set.of(CONNECTION_CREATED_TOPIC))
 									.consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, applicationName)
-									.consumerProperty(JsonDeserializer.VALUE_DEFAULT_TYPE, UserConnection.class)
+									.withValueDeserializer(new JsonDeserializer<>(new TypeReference<Envelope<UserConnection>>(){}))
 									.consumerProperty(JsonDeserializer.USE_TYPE_INFO_HEADERS, false)
 									.consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
@@ -112,7 +113,7 @@ public class MessagingConfiguration {
 	}
 
 	@Bean
-	ConnectionListener connectionListener(ReactiveKafkaConsumerTemplate<String, UserConnection> reactiveConnectionConsumerTemplate,
+	ConnectionListener connectionListener(ReactiveKafkaConsumerTemplate<String, Envelope<UserConnection>> reactiveConnectionConsumerTemplate,
 										  ConversationService conversationService) {
 		var connectionListener = new ConnectionListener(reactiveConnectionConsumerTemplate, conversationService);
 		connectionListener.listen();
